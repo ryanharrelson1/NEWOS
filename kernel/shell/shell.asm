@@ -1,8 +1,10 @@
-[BITS 32]
+global _starts
+extern main 
 
 
+_starts:
 
-_start: 
-   mov eax, 0x20
-    int 0x80        ; return to kernel ONCE
-    jmp $
+   call main
+
+   mov eax, 1
+   int 0x80

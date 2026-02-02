@@ -84,7 +84,8 @@ void scheduler_start() {
    
     current_process->state = TASK_RUNNING;
  
-    uintptr_t* stack = (uintptr_t*)(current_process->kernelstack);  
+    uintptr_t* stack = (uintptr_t*)(current_process->kernelstack);
+    
     
 
 
@@ -95,6 +96,12 @@ void scheduler_start() {
     *(--stack) = current_process->context.eflags;   // EFLAGS
     *(--stack) = current_process->context.cs;       // CS
     *(--stack) = current_process->context.eip;      // EIP
+
+
+    serial_write_string("hello world");
+    serial_write_hex32(current_process->context.useresp);
+    serial_write_string("\n");
+    serial_write_hex32(current_process->context.eip);
 
     
 

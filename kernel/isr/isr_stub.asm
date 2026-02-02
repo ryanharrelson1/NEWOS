@@ -31,7 +31,7 @@ isr_gp_handler_stub:
     hlt
 
 global isr_syscall_stub
-extern syscall_handler_c
+extern syscall_dispatch
 
 isr_syscall_stub:
 
@@ -49,7 +49,7 @@ isr_syscall_stub:
     mov gs, ax
 
     push esp                ; pass pointer to stack frame to C
-    call syscall_handler_c
+    call syscall_dispatch
     add esp, 4              ; clean argument
 
     pop gs

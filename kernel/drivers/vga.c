@@ -269,11 +269,89 @@ void kprintf_default(const char* fmt, ...) {
     va_end(args);
 }
 
+void vga_enable_cursor(uint8_t start, uint8_t end)
+{
+    outb(0x3D4, 0x0A);
+    outb(0x3D5, (inb(0x3D5) & 0xC0) | start);
+
+    outb(0x3D4, 0x0B);
+    outb(0x3D5, (inb(0x3D5) & 0xE0) | end);
+}
+
 
 void vga_init() {
     
     vga_set_color(VGA_LIGHT_GREY, VGA_BLACK);
     vga_clear();
+    vga_enable_cursor(0, 15);
     
+}
+
+
+void terminal_handle_char(uint8_t c)
+{
+    switch(c)
+    {
+
+        case '\b':
+    if(cursor_col > 0 || cursor_row > 0) {
+        // move cursor left
+        if(cursor_col > 0) {
+            cursor_col--;
+        } else {
+            // move to end of previous line
+            cursor_row--;
+            cursor_col = VGA_WIDTH - 1;
+        }
+
+        // delete character at cursor and shift rest left
+        size_t pos = cursor_row * VGA_WIDTH + cursor_col;
+        while (pos < VGA_WIDTH * (cursor_row + 1) - 1 && (vga_buffer[pos + 1] & 0xFF) != ' ') {
+            vga_buffer[pos] = vga_buffer[pos + 1];
+            pos++;
+        }
+        vga_buffer[pos] = make_entry(' ', vga_color);
+
+        move_cursor();
+    }
+    break; 
+
+        case 0x93: // LEFT
+            if(cursor_col > 0) {
+                cursor_col--;
+            } else if(cursor_row > 0) {
+                cursor_row--;
+                cursor_col = VGA_WIDTH - 1;
+            }
+            move_cursor();
+            break;
+
+        case 0x94: // RIGHT
+            if(cursor_col < VGA_WIDTH - 1) {
+                cursor_col++;
+            } else {
+                cursor_col = 0;
+                cursor_row++;
+            }
+            scroll();
+            move_cursor();
+            break;
+
+        case 0x91: // UP
+            if(cursor_row > 0)
+                cursor_row--;
+            move_cursor();
+            break;
+
+        case 0x92: // DOWN
+            cursor_row++;
+            scroll();
+            move_cursor();
+            break;
+
+        default:
+            vga_putc(c);
+            break;
+    }
 }
 

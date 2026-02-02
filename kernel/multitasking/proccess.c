@@ -5,6 +5,7 @@
 #include "../libs/memhelp.h"
 #include "../gdt/tss.h"
 #include "scheduler.h"
+#include "elf_loader.h"
 
  int next_pid = 1;
  void copy_user_code(uint32_t proc_pd_phys, uintptr_t dest_virt, const void* src, size_t size);
@@ -38,6 +39,9 @@ process_t* create_proccess(void* user_code, size_t code_size) {
       
 
           proc->kernelstack = alloc_kernel_stack(proc);
+          serial_write_string("stack we allocated");
+          serial_write_hex32(proc->kernelstack);
+          serial_write_string("\n");
           
              
         // --- Create page directory ---
@@ -58,27 +62,15 @@ process_t* create_proccess(void* user_code, size_t code_size) {
     
 
         // --- Load user code into memory ---
-           if (user_alloc_and_map(proc->page_directory, USER_CODE_VIRT_ADDR_BASE, code_size) < 0)
+          if (!elf_load(user_code, proc->page_directory, &proc->entry_point))
             goto fail;
-
-            serial_write_string("create_proccess: user memory allocated and mapped\n");
-            serial_write_hex32(code_size);
-
-           
-
-            copy_user_code(proc->page_directory, USER_CODE_VIRT_ADDR_BASE, user_code, code_size);
-             
-
-            serial_write_string("create_proccess: user code copied into memory\n");
-        
 
          // --- Set up user stack ---
          user_alloc_and_map(proc->page_directory,0x800000 - USER_STACK_SIZE,USER_STACK_SIZE);
 
            proc->user_stack_top = USER_STACK_VIRT_ADDR_BASE - 4; // stack grows downwards
 
-
-         proc->entry_point = USER_CODE_VIRT_ADDR_BASE; // User code starts here
+            
 
     // --- Initialize CPU context ---
     proc->context.eip = proc->entry_point;
@@ -252,7 +244,7 @@ int user_alloc_and_map(uint32_t proc_pd, uintptr_t virt_start, size_t size) {
 
 
 
- void copy_user_code(uint32_t proc_pd_phys, uintptr_t dest_virt, const void* src, size_t size) {
+void copy_user_code(uint32_t proc_pd_phys, uintptr_t dest_virt, const void* src, size_t size) {
     size_t pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
 
     // Map the process page directory temporarily
@@ -287,30 +279,21 @@ int user_alloc_and_map(uint32_t proc_pd, uintptr_t virt_start, size_t size) {
         uintptr_t temp_page = temp_map_allocate();
         map_kernel_page(temp_page, page_phys);
 
-        // Map source page temporarily (user code)
-        uintptr_t temp_src = temp_map_allocate();
-        map_kernel_page(temp_src, (uintptr_t)src + i * PAGE_SIZE);
-
-        // Determine how much to copy
+        // Copy data directly from kernel memory (no mapping!)
         size_t copy_size = PAGE_SIZE;
         if ((i + 1) * PAGE_SIZE > size)
             copy_size = size - i * PAGE_SIZE;
 
-        // Copy the data
-        memcopy((void*)temp_page, (void*)temp_src, copy_size);
+        memcopy((void*)temp_page, (const uint8_t*)src + i * PAGE_SIZE, copy_size);
 
-        // Cleanup temporary mappings
+        // Cleanup
         unmap_page_core(temp_page);
         temp_map_free(temp_page);
-
-        unmap_page_core(temp_src);
-        temp_map_free(temp_src);
 
         unmap_page_core(pt_virt);
         temp_map_free(pt_virt);
     }
 
-    // Cleanup PD mapping
     unmap_page_core(temp_pd_virt);
     temp_map_free(temp_pd_virt);
 }
@@ -318,17 +301,12 @@ int user_alloc_and_map(uint32_t proc_pd, uintptr_t virt_start, size_t size) {
 
 
 uintptr_t alloc_kernel_stack(process_t* proc) {
-      serial_write_string("++++++++++++++++++++++++++++++++++++++");
     serial_write_string("Allocating kernel stack for process PID ");
     serial_write_hex32(proc->pid);
     serial_write_string("\n");
 
     // reserve VA space
     next_kernel_stack_va -= KERNEL_STACK_SIZE;
-    serial_write_string("Stack base VA: ");
-    serial_write_hex32(next_kernel_stack_va);
-    serial_write_string("\n");
-
     if (next_kernel_stack_va < KERNEL_STACK_REGION_START) {
         serial_write_string("ERROR: Out of kernel stack VA space\n");
         return 0;
@@ -336,7 +314,7 @@ uintptr_t alloc_kernel_stack(process_t* proc) {
 
     uintptr_t stack_base = next_kernel_stack_va;
 
-    // map physical pages globally
+    // Map KERNEL_STACK_SIZE pages
     for (int i = 0; i < KERNEL_STACK_SIZE / PAGE_SIZE; i++) {
         uintptr_t phys = pmm_alloc_frame();
         if (!phys) {
@@ -354,26 +332,11 @@ uintptr_t alloc_kernel_stack(process_t* proc) {
         serial_write_string("\n");
     }
 
-    // optional: ensure small buffer at top
-    uintptr_t extra_phys = pmm_alloc_frame();
-    if (!extra_phys) {
-        serial_write_string("ERROR: Out of physical memory for kernel stack extra top page\n");
-    } else {
-        uintptr_t extra_va = stack_base + KERNEL_STACK_SIZE;
-        map_kernel_page(extra_va, extra_phys);
-        serial_write_string("Mapped extra top page: VA ");
-        serial_write_hex32(extra_va);
-        serial_write_string(" -> PHYS ");
-        serial_write_hex32(extra_phys);
-        serial_write_string("\n");
-    }
-
-    uintptr_t stack_top = stack_base + KERNEL_STACK_SIZE + PAGE_SIZE;
+    // Return **top of stack** — one byte past the last valid page
+    uintptr_t stack_top = stack_base + KERNEL_STACK_SIZE;
     serial_write_string("Kernel stack TOP returned: ");
     serial_write_hex32(stack_top);
     serial_write_string("\n\n");
-     serial_write_string("++++++++++++++++++++++++++++++++++++++");
 
-    // stack grows down → return TOP
     return stack_top;
 }

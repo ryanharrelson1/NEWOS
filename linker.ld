@@ -11,11 +11,6 @@ SECTIONS {
         KEEP(*(.boot))
     }
 
-    .userprog ALIGN(4K) : AT(ADDR(.userprog)) {
-        _bin_user_start = .;
-        KEEP(*(.userprog))
-        _bin_user_end = .;
-    }
 
 
     /* LMA for .text */
@@ -35,6 +30,11 @@ SECTIONS {
     .rodata ALIGN(4K) : AT(__rodata_lma_start) {
         *(.rodata*)
         *(.eh_frame)
+
+           _bin_user_start = .;
+        KEEP(*(.userprog))
+        _bin_user_end = .;
+
         __rodata_lma_end = LOADADDR(.rodata) + SIZEOF(.rodata);
     }
 

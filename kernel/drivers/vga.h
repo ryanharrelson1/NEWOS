@@ -35,5 +35,6 @@ void vga_write_string(const char* str);
 void vga_set_color( enum vga_color fg, enum vga_color bg);
 void kprintf(enum vga_color fg, enum vga_color bg, const char* fmt, ...);
 void kprintf_default(const char* fmt, ...);
+void terminal_handle_char(uint8_t c);
 
 #endif

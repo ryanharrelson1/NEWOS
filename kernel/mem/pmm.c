@@ -93,6 +93,8 @@ void pmm_init(struct mem_region* regions, size_t region_count) {
     }
      set_frame_used(0); // Reserve first frame
     serial_write_string("PMM initialized.\n");
+    serial_write_string("phys end");
+    serial_write_hex32(bitmap_phys_end);
 
 }
 

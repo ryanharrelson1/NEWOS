@@ -15,6 +15,7 @@
 #include "multitasking/scheduler.h"
 #include "drivers/ide/ide.h"
 #include "drivers/vga.h"
+#include "drivers/keyboard.h"
 
 
 
@@ -46,9 +47,9 @@ void kernel_main() {
     pit_init();
     ide_init();
     vga_init();
+    keyboard_init();
 
-    
-
+ serial_write_hex32(KERNEL_STACK_REGION_END);
 
 
     call_user_shell();
@@ -69,8 +70,11 @@ void kernel_main() {
 
 
  __asm__ __volatile__("sti"); // Enable interrupts
-    
+    char c;
     while (1) {
+        if(keyboard_read_char((char*)&c)) {
+            terminal_handle_char(c);
+        }
         __asm__ __volatile__("hlt");
     }
     
@@ -86,7 +90,8 @@ void call_user_shell() {
 
 
        serial_write_string("User process created.\n");
- serial_write_hex32(user_proc->kernelstack);
+        serial_write_hex32(user_proc->kernelstack);
+        //asm volatile("hlt");
 
     if (!user_proc) {
         serial_write_string("Failed to create user process.\n");

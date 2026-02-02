@@ -87,16 +87,27 @@ ide.o: kernel/drivers/ide/ide.c kernel/drivers/ide/ide.h
 vga.o: kernel/drivers/vga.c kernel/drivers/vga.h
 	gcc -m32 -ffreestanding -c kernel/drivers/vga.c -o vga.o
 
-shell.bin: kernel/shell/shell.asm
-	nasm -f bin kernel/shell/shell.asm -o shell.bin
+keyboard.o: kernel/drivers/keyboard.c kernel/drivers/keyboard.h
+	gcc -m32 -ffreestanding -c kernel/drivers/keyboard.c -o keyboard.o
 
-shell.o: shell.bin
-	objcopy -I binary -O elf32-i386 -B i386 shell.bin shell.o --rename-section .data=.userprog
+elf_loader.o: kernel/multitasking/elf_loader.c kernel/multitasking/elf_loader.h
+	gcc -m32 -ffreestanding -c kernel/multitasking/elf_loader.c -o elf_loader.o
+
+shell.o: kernel/shell/shell.c
+	gcc -m32 -ffreestanding -c kernel/shell/shell.c -o shell.o
+
+shell.elf: shell.o 
+	ld -m elf_i386 -T kernel/shell/shell.ld -o shell.elf shell.o
+
+shell_embed.o: shell.elf 
+	objcopy -I binary -O elf32-i386 -B i386 shell.elf shell_embed.o --rename-section .data=.userprog
 
 
 
-kernel.elf: boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o shell.o process.o scheduler.o ide_io.o ide.o vga.o
-	ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o  shell.o process.o scheduler.o ide_io.o ide.o vga.o
+
+
+kernel.elf: boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o process.o scheduler.o ide_io.o ide.o vga.o keyboard.o elf_loader.o shell_embed.o
+	ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o process.o scheduler.o ide_io.o ide.o vga.o keyboard.o elf_loader.o shell_embed.o
 
 iso: kernel.elf
 	mkdir -p isodir/boot/grub
