@@ -13,8 +13,8 @@
 #define IDE_DRIVE_SEL  0x06   // Drive/head
 #define IDE_STATUS     0x07   // Status (read)
 #define IDE_COMMAND    0x07   // Command (write)
-#define IDE_ALT_STATUS 0x206  // Alternate status (read)
-#define IDE_CONTROL    0x206  // Control (write)
+#define IDE_ALT_STATUS 0x00
+#define IDE_CONTROL    0x00
 
 
 #define IDE_PRIME_BASE 0x1F0
@@ -24,10 +24,11 @@
 
 
 // status control points
-
+#define IDE_SR_ERR 0x01  // Error
 #define IDE_SR_BSY 0x80
 #define IDE_SR_DRDY 0x40
 #define IDE_SR_DRQ 0x08
+#define IDE_SR_DF  0x20  // Device Fault
 
 
 //commands
@@ -50,6 +51,7 @@ typedef struct {
 } ide_device_t;
 
 extern ide_device_t devices[4];
+extern ide_device_t* ide_boot_disk;
 
 void ide_init();
 

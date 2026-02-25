@@ -1,5 +1,6 @@
 #include "keyboard.h"
 #include "../io/io.h"   // inb/outb
+#include "serial.h"
 
 
 static char keyboard_buffer[KEYBOARD_BUFFER_SIZE];
@@ -68,7 +69,7 @@ static void handle_arrow(uint8_t arrow) {
 // ---- IRQ Handler ----
 void keyboard_handler() {
     uint8_t scancode = inb(0x60);
-
+    serial_write_string("bam");
     if(scancode == 0xE0) {
         extended = true;
         return;

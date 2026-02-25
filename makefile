@@ -93,11 +93,30 @@ keyboard.o: kernel/drivers/keyboard.c kernel/drivers/keyboard.h
 elf_loader.o: kernel/multitasking/elf_loader.c kernel/multitasking/elf_loader.h
 	gcc -m32 -ffreestanding -c kernel/multitasking/elf_loader.c -o elf_loader.o
 
+syscall.o: kernel/isr/syscall.c kernel/isr/syscall.h 
+	gcc -m32 -ffreestanding -c kernel/isr/syscall.c -o syscall.o
+
+fs.o: kernel/drivers/fs/fat.c kernel/drivers/fs/fat.h
+	gcc -m32 -ffreestanding -c kernel/drivers/fs/fat.c -o fs.o
+
+vfs.o: kernel/drivers/fs/vfs.c kernel/drivers/fs/vfs.h
+	gcc -m32 -ffreestanding -c kernel/drivers/fs/vfs.c -o vfs.o
+
 shell.o: kernel/shell/shell.c
 	gcc -m32 -ffreestanding -c kernel/shell/shell.c -o shell.o
 
-shell.elf: shell.o 
-	ld -m elf_i386 -T kernel/shell/shell.ld -o shell.elf shell.o
+string.o: kernel/shell/lib/string.c kernel/shell/lib/string.h 
+	gcc -m32 -ffreestanding -c kernel/shell/lib/string.c -o string.o
+
+kcall.o: kernel/shell/lib/kcall.c kernel/shell/lib/kcall.h 
+	gcc -m32 -ffreestanding -c kernel/shell/lib/kcall.c -o kcall.o
+
+cmd.o: kernel/shell/shell_main/cmd.c kernel/shell/shell_main/cmd.h 
+	gcc	-m32 -ffreestanding -c kernel/shell/shell_main/cmd.c -o cmd.o
+
+
+shell.elf: shell.o string.o kcall.o cmd.o
+	ld -m elf_i386 -T kernel/shell/shell.ld -o shell.elf shell.o string.o kcall.o cmd.o
 
 shell_embed.o: shell.elf 
 	objcopy -I binary -O elf32-i386 -B i386 shell.elf shell_embed.o --rename-section .data=.userprog
@@ -106,8 +125,8 @@ shell_embed.o: shell.elf
 
 
 
-kernel.elf: boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o process.o scheduler.o ide_io.o ide.o vga.o keyboard.o elf_loader.o shell_embed.o
-	ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o process.o scheduler.o ide_io.o ide.o vga.o keyboard.o elf_loader.o shell_embed.o
+kernel.elf: boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o process.o scheduler.o ide_io.o ide.o vga.o keyboard.o elf_loader.o shell_embed.o syscall.o fs.o vfs.o
+	ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel_main.o gdt.o tss.o loader.o idt.o idt_loader.o isr.o isr_stub.o isr_handler.o irq.o irq_stub.o irq_handler.o pic.o io.o serial.o memmap.o libs.o pmm.o paging.o slab.o kernel_heap.o pit.o process.o scheduler.o ide_io.o ide.o vga.o keyboard.o elf_loader.o shell_embed.o syscall.o fs.o vfs.o
 
 iso: kernel.elf
 	mkdir -p isodir/boot/grub
@@ -117,7 +136,7 @@ iso: kernel.elf
 
 
 run: iso 
-	qemu-system-i386 -cdrom ytOS.iso -m 4G -serial stdio -drive file=disk.img,if=ide,index=0
+	qemu-system-i386 -cdrom ytOS.iso -m 4G -serial stdio -drive file=hdd.img,if=ide,index=0 -boot d
 
 clean:
 	rm -rf isodir

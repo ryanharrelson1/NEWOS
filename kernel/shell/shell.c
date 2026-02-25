@@ -1,7 +1,18 @@
-void main(){
-     asm volatile (
-        "movl $0x20, %eax\n"  // put a test number in EAX
-    );
+#include "lib/kcall.h"
+#include "lib/string.h"
+#include "shell_main/cmd.h"
 
-    while(1);
+
+void main(){
+    char line[128];
+    
+
+    
+    while(1) {
+        getline(line, sizeof(line));
+        parse_and_execute(line);
+   
+    }
+
+    return 0;
 }

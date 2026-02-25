@@ -1,4 +1,5 @@
 #include "syscall.h"
+#include "../drivers/vga.h"
 
 /* ---------------------------
    Syscall handler table
@@ -34,12 +35,42 @@ uint32_t syscall_dispatch(regs_t* r) {
    Syscall stubs
    --------------------------- */
 static uint32_t sys_write(regs_t* r) {
-    serial_write_string("write");
-    return r->edx; /* pretend we wrote everything */
+ char* buf = (char*)r->ecx;
+ uint32_t len = r->edx;
+
+ for(uint32_t i = 0; i < len; i++) {
+    kprintf_default("%c", buf[i]);
+ }
+
+ return len;
 }
 
 static uint32_t sys_exit(regs_t* r) {
     for (;;) {} /* hang for now */
+}
+
+static uint32_t sys_read(regs_t* r) {
+    char* buf = (char*)r->ecx;
+    uint32_t len = r->edx;
+    uint32_t i = 0;
+    char c;
+
+    asm volatile("sti");
+
+    while(i < len) {
+
+        if(!keyboard_read_char(&c)) {
+            asm volatile("hlt");
+            continue;   // <<< CRITICAL
+        }
+
+        buf[i++] = c;
+
+        if(c == '\n')
+            break;
+    }
+
+    return i;
 }
 
 /* ---------------------------
@@ -48,4 +79,5 @@ static uint32_t sys_exit(regs_t* r) {
 void syscall_init(void) {
     syscall_register(SYS_WRITE, sys_write);
     syscall_register(SYS_EXIT,  sys_exit);
+    syscall_register(SYS_READ, sys_read);
 }

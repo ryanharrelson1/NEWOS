@@ -7,6 +7,7 @@
 enum {
     SYS_WRITE = 0,
     SYS_EXIT  = 1,
+    SYS_READ = 3,
 };
 
 /* Must match your ISR register frame pushed by pusha */

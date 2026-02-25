@@ -1,8 +1,8 @@
-global _starts
+global _start
 extern main 
 
 
-_starts:
+_start:
 
    call main
 

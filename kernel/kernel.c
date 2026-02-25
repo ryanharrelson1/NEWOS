@@ -16,66 +16,60 @@
 #include "drivers/ide/ide.h"
 #include "drivers/vga.h"
 #include "drivers/keyboard.h"
+#include "isr/syscall.h"
+#include "drivers/fs/vfs.h"
 
 
 
-extern uint32_t  mb2_info_ptr;
-extern uint32_t mb2_magic;
-
-
-extern uint8_t _bin_user_start[];
-extern uint8_t _bin_user_end[];
 
 
  
 
 
 
+extern uint32_t  mb2_info_ptr; // provided by boot.s, points to the multiboot2 info structure passed by grub2
+extern uint32_t mb2_magic; // provided by boot.s, should be 0x36d76289 for multiboot2 compliant bootloader (grub2)
 
 
+extern uint8_t _bin_user_start[]; // provided by the linker script, marks the start of the embedded user shell binary in the kernel's address space
+extern uint8_t _bin_user_end[]; // provided by the linker script, marks the end of the embedded user shell binary in the kernel's address space
 
+
+// Here we will implement the kernel's main function, which will be called after the bootloader has loaded the kernel into memory and called boot.s
+//  to setup paging and move kernel into high half of memory and setup the recursive mapping as well as map the vga mem to a high half adress and set up the
+//  initial environment. This is where we will initialize all our subsystems and start the first user process.
 void kernel_main() {
-    init_serial();
-    gdt_install();
-    idt_install();
-    isr_install();
-    pic_remap();
-    irq_install();
-    parse_memory_map(mb2_info_ptr);
-    paging_init();
-    kmalloc_init();
-    pit_init();
-    ide_init();
-    vga_init();
-    keyboard_init();
+    init_serial(); // Initialize serial for early debugging output
+    gdt_install(); // Setup Global Descriptor Table and TSS 
+    idt_install(); // Setup Interrupt Descriptor Table
+    isr_install(); // Setup ISRs for CPU exceptions
+    pic_remap(); // Remap PIC to avoid conflicts with CPU exceptions
+    irq_install(); // Setup IRQ handlers for hardware interrupts
+    parse_memory_map(mb2_info_ptr); // Parse memory map provided by grub2 bootloader
+    paging_init(); // clear the identity mapping in the low half of memory
+    kmalloc_init(); // Initialize kernel heap allocator
+    pit_init(); // Initialize Programmable Interval Timer for scheduling
+    ide_init(); // Initialize IDE driver for disk access
+    vga_init(); // Initialize VGA driver for text output
+    keyboard_init(); // Initialize keyboard driver for input
+    syscall_init(); // Initialize system call handlers
+    vfs_mount_root(); // Mount the root filesystem (FAT16 on the boot disk)
 
- serial_write_hex32(KERNEL_STACK_REGION_END);
+    test(); // run some tests to verify the filesystem is working before we start the user shell
 
 
-    call_user_shell();
+
+
+
+   //call_user_shell(); // Load and start the first user process (the shell)
 
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
  __asm__ __volatile__("sti"); // Enable interrupts
-    char c;
+   // simple while loop to keep the kernel running. The scheduler will take over and switch to the user shell process.
+   // we should never actually get here since the scheduler should switch to the user shell and never come back to this loop, but it's here as a fallback and to keep the shell from returning back to boot.s
     while (1) {
-        if(keyboard_read_char((char*)&c)) {
-            terminal_handle_char(c);
-        }
-        __asm__ __volatile__("hlt");
+      
     }
     
 }
@@ -105,12 +99,10 @@ void call_user_shell() {
 
     scheduler_start();
 
-
-     
-
-  
-
 }
+
+
+
 
 
 

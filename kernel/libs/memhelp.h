@@ -4,9 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void* memclear(void* ptr, int value, size_t num);
+void* memoryset(void* ptr, int value, size_t num);
 
 void* memcopy(void* dest, const void* src, size_t n);
+
+int memcmps(const void* a, const void* b, size_t n);
 #endif // MEMHELP_H
 
 
