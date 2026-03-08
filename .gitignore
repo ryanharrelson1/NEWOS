@@ -1,0 +1,10 @@
+# Object files
+*.o
+
+# Disk / image files
+*.hdd
+*.img
+*.iso
+
+# Text files
+*.txt

@@ -57,6 +57,21 @@ typedef struct {
   uint16_t off;
 } fat_dirent_loc_t;
 
+typedef struct  __attribute__((packed)) {
+    char     name[11];
+    uint8_t  attr;
+    uint8_t  ntres;
+    uint8_t  creation_time_tenths;
+    uint16_t creation_time;
+    uint16_t creation_date;
+    uint16_t last_access_date;
+    uint16_t first_cluster_high;
+    uint16_t write_time;
+    uint16_t write_date;
+    uint16_t first_cluster_low;
+    uint32_t file_size;
+} fat_dir_entry_raw_t;
+
 int fat_mount(fat_info_t* fs, ide_device_t* device);
 int fat_root_list(fat_info_t* fs);
 int fat_root_find(fat_info_t* fs, const char* name83, fat_dir_entry_t* out_entry);
@@ -77,6 +92,16 @@ int fat16_chain_get_length(fat_info_t* fs, uint16_t start, uint32_t n, uint16_t*
 int fat_dir_find_loc(fat_info_t* fs, uint16_t dir_cluster, const char* name83, fat_dirent_loc_t* out_loc, fat_dir_entry_t* out_entry);
 int fat_dir_find_free_slot(fat_info_t* fs, uint16_t dir_cluster, fat_dirent_loc_t* out_loc);
 int fat_dir_write_raw_at(fat_info_t* fs, const fat_dirent_loc_t* loc, const fat_dir_entry_raw_t* raw);
+void fat_test_dir_write(fat_info_t* fs);
+int fat_unlink(fat_info_t* fs, uint16_t dir_cluster, const char* name83);
+int fat_create_file(fat_info_t* fs, uint16_t dir_cluster, const char* name83);
+int fat_write_file(fat_info_t* fs, uint16_t dir_cluster, const char* name83, const void* data, uint32_t size);
+int fat_append_file(fat_info_t* fs, uint16_t dir_cluster, const char* name83, const void* data, uint32_t size);
+int fat_mkdir(fat_info_t* fs, uint16_t parent_dir_cluster, const char* name83);
+int fat_rmdir(fat_info_t* fs, uint16_t parent_dir_cluster, const char* name83);
+int fat_rename(fat_info_t* fs, uint16_t dir_cluster, const char* old_name83, const char* new_name83);
+int fat_move(fat_info_t* fs, uint16_t src_dir_cluster, const char* name83, uint16_t dest_dir_cluster, const char* new_name83);
+int fat_dir_grow(fat_info_t* fs, uint16_t dir_cluster, uint16_t* out_new_cluster);
 
 
 

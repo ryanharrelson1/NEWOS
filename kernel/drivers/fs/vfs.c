@@ -140,25 +140,8 @@ int vfs_stat(const char* path, vfs_stat_t* st) {
 
 
 void test() {
-    uint16_t a = fat_alloc_cluster(&g_root);
-    uint16_t b = fat_alloc_cluster(&g_root);
-    serial_write_string("alloc a="); serial_write_hex32(a);
-    serial_write_string(" b="); serial_write_hex32(b); serial_write_string("\n");
 
-    fat16_set_fat_entry(&g_root, a, b);
-    fat16_set_fat_entry(&g_root, b, FAT16_EOC);
-
-    uint16_t va = fat16_get_fat_entry(&g_root, a);
-    uint16_t vb = fat16_get_fat_entry(&g_root, b);
-    serial_write_string("fat[a]="); serial_write_hex32(va);
-    serial_write_string(" fat[b]="); serial_write_hex32(vb); serial_write_string("\n");
-
-    fat16_free_chain(&g_root, a);
-    va = fat16_get_fat_entry(&g_root, a);
-    vb = fat16_get_fat_entry(&g_root, b);
-    serial_write_string("after free fat[a]="); serial_write_hex32(va);
-    serial_write_string(" fat[b]="); serial_write_hex32(vb); serial_write_string("\n");
-
+ fat_test_dir_write(&g_root);
 
 }
 
