@@ -2,6 +2,8 @@
 #define Proccess_H
 #include <stdint.h>
 #include <stddef.h>
+#include "../drivers/fs/vfs.h"
+#define PROC_MAX_FDS 32
 #define PAGE_SIZE 4096
 #define USER_STACK_SIZE 0x4000   // 16 KB
 
@@ -44,6 +46,11 @@ typedef enum {
     TASK_TERMINATED
 } task_state_t;
 
+typedef struct {
+    int used;
+    vfs_file_t file;
+} fd_entry_t;
+
 typedef struct process {
     uint32_t pid;
     cpu_context_t context;
@@ -53,6 +60,8 @@ typedef struct process {
     uintptr_t entry_point;    // Entry point of the process
     task_state_t state;
     struct process* next;     // For linked list of processes
+    fd_entry_t fds[PROC_MAX_FDS];
+
 } process_t;
 
 process_t* create_proccess(void* user_code, size_t code_size);

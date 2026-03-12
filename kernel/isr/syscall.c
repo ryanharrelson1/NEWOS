@@ -1,5 +1,36 @@
 #include "syscall.h"
 #include "../drivers/vga.h"
+#include "../drivers/fs/fat.h"
+#include "../drivers/fs/vfs.h"
+#include "../multitasking/proccess.h"
+
+
+
+
+extern process_t* current_process;
+
+static int fd_alloc(process_t* p) {
+    for (int i = 3; i < PROC_MAX_FDS; i++) {
+        if (!p->fds[i].used) {
+            p->fds[i].used = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void fd_free(process_t* p, int fd) {
+    if (!p) return;
+    if (fd < 0 || fd >= PROC_MAX_FDS) return;
+    p->fds[fd].used = 0;
+}
+
+static fd_entry_t* fd_get(process_t* p, int fd) {
+    if (!p) return 0;
+    if (fd < 0 || fd >= PROC_MAX_FDS) return 0;
+    if (!p->fds[fd].used) return 0;
+    return &p->fds[fd];
+}
 
 /* ---------------------------
    Syscall handler table
@@ -35,43 +66,134 @@ uint32_t syscall_dispatch(regs_t* r) {
    Syscall stubs
    --------------------------- */
 static uint32_t sys_write(regs_t* r) {
- char* buf = (char*)r->ecx;
- uint32_t len = r->edx;
+    int fd = (int)r->ebx;
+    char* buf = (char*)r->ecx;
+    uint32_t len = r->edx;
 
- for(uint32_t i = 0; i < len; i++) {
-    kprintf_default("%c", buf[i]);
- }
+    if (!buf) return (uint32_t)-1;
 
- return len;
+    if (fd == 1 || fd == 2) {
+        for (uint32_t i = 0; i < len; i++) {
+            kprintf_default("%c", buf[i]);
+        }
+        return len;
+    }
+
+    return (uint32_t)-1;
 }
 
 static uint32_t sys_exit(regs_t* r) {
     for (;;) {} /* hang for now */
 }
 
-static uint32_t sys_read(regs_t* r) {
-    char* buf = (char*)r->ecx;
-    uint32_t len = r->edx;
-    uint32_t i = 0;
-    char c;
 
-    asm volatile("sti");
 
-    while(i < len) {
+static uint32_t sys_open(regs_t* r) {
+    process_t* p = current_process;
+    if (!p) return (uint32_t)-1;
+    serial_write_string("sys_open called\n");
 
-        if(!keyboard_read_char(&c)) {
-            asm volatile("hlt");
-            continue;   // <<< CRITICAL
-        }
+    const char* path = (const char*)r->ebx;
+    if (!path) return (uint32_t)-1;
 
-        buf[i++] = c;
+    int fd = fd_alloc(p);
+    if (fd < 0) return (uint32_t)-1;
 
-        if(c == '\n')
-            break;
+    int vr = vfs_open(path, &p->fds[fd].file);
+    if (vr != 0) {
+        fd_free(p, fd);
+        return (uint32_t)-1;
     }
 
-    return i;
+    return (uint32_t)fd;
 }
+
+static uint32_t sys_close(regs_t* r) {
+    process_t* p = current_process;
+    if (!p) return (uint32_t)-1;
+
+    int fd = (int)r->ebx;
+    fd_entry_t* e = fd_get(p, fd);
+    if (!e) return (uint32_t)-1;
+
+    vfs_close(&e->file);
+    fd_free(p, fd);
+    return 0;
+}
+
+static uint32_t sys_read(regs_t* r) {
+    process_t* p = current_process;
+    if (!p) return (uint32_t)-1;
+
+    int fd = (int)r->ebx;
+    char* buf = (char*)r->ecx;
+    uint32_t len = r->edx;
+
+    if (!buf) return (uint32_t)-1;
+    serial_write_string("sys_read called\n");
+
+    // stdin
+    if (fd == 0) {
+        uint32_t i = 0;
+        char c;
+
+        asm volatile("sti");
+
+        while (i < len) {
+            if (!keyboard_read_char(&c)) {
+                asm volatile("hlt");
+                continue;
+            }
+
+            buf[i++] = c;
+
+            if (c == '\n')
+                break;
+        }
+
+        return i;
+    }
+
+    // file read
+    fd_entry_t* e = fd_get(p, fd);
+    if (!e) return (uint32_t)-1;
+
+    uint32_t got = 0;
+    int vr = vfs_read_file(&e->file, buf, len, &got);
+    if (vr != 0) return (uint32_t)-1;
+
+    return got;
+}
+
+static uint32_t sys_seek(regs_t* r) {
+    process_t* p = current_process;
+    if (!p) return (uint32_t)-1;
+
+    int fd = (int)r->ebx;
+    uint32_t pos = r->ecx;
+
+    fd_entry_t* e = fd_get(p, fd);
+    if (!e) return (uint32_t)-1;
+
+    int vr = vfs_seek(&e->file, pos);
+    if (vr != 0) return (uint32_t)-1;
+
+    return 0;
+}
+
+static uint32_t sys_list(regs_t* r) {
+    const char* path = (const char*)r->ebx;
+    if (!path) return (uint32_t)-1;
+
+    int vr = vfs_ls(path);
+    if (vr != 0) return (uint32_t)-1;
+
+    return 0;
+}
+
+
+
+
 
 /* ---------------------------
    Initialization
@@ -80,4 +202,8 @@ void syscall_init(void) {
     syscall_register(SYS_WRITE, sys_write);
     syscall_register(SYS_EXIT,  sys_exit);
     syscall_register(SYS_READ, sys_read);
+    syscall_register(SYS_OPEN,  sys_open);
+    syscall_register(SYS_CLOSE, sys_close);
+    syscall_register(SYS_SEEK,  sys_seek);
+    syscall_register(SYS_LIST,  sys_list);
 }

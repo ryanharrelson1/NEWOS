@@ -8,6 +8,10 @@ enum {
     SYS_WRITE = 0,
     SYS_EXIT  = 1,
     SYS_READ = 3,
+    SYS_OPEN = 4,
+    SYS_CLOSE = 5,
+    SYS_SEEK = 6,
+    SYS_LIST = 7,
 };
 
 /* Must match your ISR register frame pushed by pusha */

@@ -82,6 +82,10 @@ process_t* create_proccess(void* user_code, size_t code_size) {
     proc->context.es = 0x23; // User data segment
     proc->context.fs = 0x23; // User data segment
     proc->context.gs = 0x23; // User data segment
+
+    for (int i = 0; i < PROC_MAX_FDS; i++) {
+    proc->fds[i].used = 0;
+    }
     
 
 

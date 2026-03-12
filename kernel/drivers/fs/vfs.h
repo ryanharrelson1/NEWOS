@@ -26,6 +26,14 @@ int vfs_open(const char* path, vfs_file_t* out);
 int vfs_read_file(vfs_file_t* f, void* out_buf, uint32_t bytes, uint32_t* out_read);
 int vfs_seek(vfs_file_t* f, uint32_t new_pos);
 int vfs_close(vfs_file_t* f); // no-op for now
+int vfs_create(const char* path);
+int vfs_unlink(const char* path);
+int vfs_mkdir(const char* path);
+int vfs_rmdir(const char* path);
+int vfs_rename(const char* old_path, const char* new_path);
+int vfs_move(const char* old_path, const char* new_path);
+int vfs_write_file(const char* path, const void* data, uint32_t size);
+int vfs_append_file(const char* path, const void* data, uint32_t size);
 
 
 int vfs_read_at(vfs_file_t* f, uint32_t off, void* out_buf, uint32_t bytes, uint32_t* out_read);

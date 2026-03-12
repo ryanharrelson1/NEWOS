@@ -1435,38 +1435,6 @@ int fat_move(fat_info_t* fs, uint16_t src_dir_cluster, const char* name83, uint1
    
 
 void fat_test_dir_write(fat_info_t* fs) {
- fat_dir_entry_t ent;
-    int r = fat_dir_find(fs, 3, "NEWDIR", &ent);
-    serial_write_string("find NEWDIR r=");
-    serial_write_hex32(r);
-    serial_write_string(" cl=");
-    serial_write_hex32(ent.first_cluster);
-    serial_write_string("\n");
-    if (r) return;
-
-    for (int i = 0; i < 20; i++) {
-        char name[13];
-
-        // produce F00.TXT, F01.TXT, ...
-        name[0] = 'F';
-        name[1] = '0' + ((i / 10) % 10);
-        name[2] = '0' + (i % 10);
-        name[3] = '.';
-        name[4] = 'T';
-        name[5] = 'X';
-        name[6] = 'T';
-        name[7] = 0;
-
-        r = fat_create_file(fs, ent.first_cluster, name);
-        serial_write_string("create ");
-        serial_write_string(name);
-        serial_write_string(" r=");
-        serial_write_hex32(r);
-        serial_write_string("\n");
-    }
-
-    serial_write_string("after growth test:\n");
-    fat_dir_list(fs, ent.first_cluster);
 
 
 }
