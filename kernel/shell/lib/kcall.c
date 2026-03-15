@@ -36,7 +36,8 @@ int open(const char* path, int flags)
     int ret;
     asm volatile("int $0x80"
         : "=a"(ret)
-        : "a"(4), "b"(path), "c"(flags));
+        : "a"(4), "b"(path), "c"(flags)
+        : "memory", "cc", "edx", "esi", "edi");
     return ret;
 }
 

@@ -31,22 +31,27 @@ static void cmd_ls(char** args) {
 
 static void cmd_cat(char** args) {
     if (!args[1]) {
-        printf("usage: cat /PATH\n");
+        write(1, "usage: cat /PATH\n", 17);
         return;
     }
 
     int fd = open(args[1], 0);
     if (fd < 0) {
-        printf("cat: open failed\n");
+        write(1, "cat: open failed\n", 17);
         return;
     }
-    
 
     char buf[64];
     int n;
+    int count = 0;
 
     while ((n = read(fd, buf, sizeof(buf))) > 0) {
         write(1, buf, n);
+        count++;
+        if (count > 16) { // safety to prevent infinite loop on large files
+            write(1, "\ncat: file too large\n", 22);
+            break;
+        }
     }
 
     close(fd);

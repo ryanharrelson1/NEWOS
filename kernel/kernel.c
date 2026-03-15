@@ -55,12 +55,11 @@ void kernel_main() {
     syscall_init(); // Initialize system call handlers
     vfs_mount_root(); // Mount the root filesystem (FAT16 on the boot disk)
 
+ 
 
 
 
-
-
-   call_user_shell(); // Load and start the first user process (the shell)
+  call_user_shell(); // Load and start the first user process (the shell)
 
     
 

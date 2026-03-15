@@ -27,8 +27,21 @@ static void fd_free(process_t* p, int fd) {
 
 static fd_entry_t* fd_get(process_t* p, int fd) {
     if (!p) return 0;
+
     if (fd < 0 || fd >= PROC_MAX_FDS) return 0;
-    if (!p->fds[fd].used) return 0;
+    //serial_write_string("fd_get: looking for fd entry for fd=");
+
+
+    if (!p->fds[fd].used){
+        serial_write_string("fd_get: fd entry for fd=");
+        serial_write_hex32(fd);
+        serial_write_string(" is not used\n");
+        return 0;
+    }
+
+    serial_write_string("fd_get: found fd entry for fd=");
+    serial_write_hex32(fd);
+    serial_write_string("\n");
     return &p->fds[fd];
 }
 
@@ -91,7 +104,12 @@ static uint32_t sys_exit(regs_t* r) {
 static uint32_t sys_open(regs_t* r) {
     process_t* p = current_process;
     if (!p) return (uint32_t)-1;
-    serial_write_string("sys_open called\n");
+  serial_write_string("sys_open: current_process=");
+serial_write_hex32((uint32_t)p);
+serial_write_string("\n");
+
+
+
 
     const char* path = (const char*)r->ebx;
     if (!path) return (uint32_t)-1;
@@ -99,7 +117,16 @@ static uint32_t sys_open(regs_t* r) {
     int fd = fd_alloc(p);
     if (fd < 0) return (uint32_t)-1;
 
+    serial_write_string("sys_open: fd=");
+serial_write_hex32((uint32_t)fd);
+serial_write_string("\n");
+
+    serial_write_string("sys_open: used after alloc=");
+serial_write_hex32((uint32_t)p->fds[fd].used);
+serial_write_string("\n");
+
     int vr = vfs_open(path, &p->fds[fd].file);
+
     if (vr != 0) {
         fd_free(p, fd);
         return (uint32_t)-1;
@@ -125,12 +152,18 @@ static uint32_t sys_read(regs_t* r) {
     process_t* p = current_process;
     if (!p) return (uint32_t)-1;
 
+    serial_write_string("sys_read: current_process=");
+serial_write_hex32((uint32_t)p);
+serial_write_string("\n");
+
     int fd = (int)r->ebx;
     char* buf = (char*)r->ecx;
     uint32_t len = r->edx;
 
+    
+
     if (!buf) return (uint32_t)-1;
-    serial_write_string("sys_read called\n");
+
 
     // stdin
     if (fd == 0) {
@@ -154,12 +187,20 @@ static uint32_t sys_read(regs_t* r) {
         return i;
     }
 
+
     // file read
     fd_entry_t* e = fd_get(p, fd);
     if (!e) return (uint32_t)-1;
+    serial_write_string("Found fd entry for read.\n");
+
 
     uint32_t got = 0;
     int vr = vfs_read_file(&e->file, buf, len, &got);
+        serial_write_string("vfs_read_file returned vr=");
+    serial_write_hex32(vr);
+    serial_write_string(" got=");
+    serial_write_hex32(got);
+    serial_write_string("\n");
     if (vr != 0) return (uint32_t)-1;
 
     return got;
