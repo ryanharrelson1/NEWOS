@@ -232,6 +232,15 @@ static uint32_t sys_list(regs_t* r) {
     return 0;
 }
 
+uint32_t sys_fork(regs_t* r) {
+    process_t* child = fork_process(current_process, r);
+    if (!child) return (uint32_t)-1;
+serial_write_string("sys_fork live eax before=");
+serial_write_hex32(r->eax);
+serial_write_string("\n");
+    return child->pid;
+}
+
 
 
 
@@ -247,4 +256,5 @@ void syscall_init(void) {
     syscall_register(SYS_CLOSE, sys_close);
     syscall_register(SYS_SEEK,  sys_seek);
     syscall_register(SYS_LIST,  sys_list);
+    syscall_register(SYS_FORK,  sys_fork);
 }

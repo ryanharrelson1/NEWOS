@@ -68,3 +68,12 @@ int list(const char* path)
     return ret;
 }
 
+int fork(void) {
+    int ret;
+    asm volatile("int $0x80"
+                 : "=a"(ret)
+                 : "a"(8)
+                 : "memory");
+    return ret;
+}
+

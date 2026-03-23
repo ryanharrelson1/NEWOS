@@ -51,6 +51,7 @@ isr_syscall_stub:
     push esp                ; pass pointer to stack frame to C
     call syscall_dispatch
     add esp, 4              ; clean argument
+    mov [esp + 44], eax
 
     pop gs
     pop fs

@@ -33,6 +33,8 @@ void scheduler_tick(uintptr_t* stack_frame) {
     if (prev->state == TASK_RUNNING)
         prev->state = TASK_READY;
 
+        
+
     process_t* next = prev->next;
     while (next != prev && next->state != TASK_READY)
         next = next->next;
@@ -45,6 +47,7 @@ void scheduler_tick(uintptr_t* stack_frame) {
 
     /* Switch address space FIRST */
     cpu_load_cr3((uintptr_t)next->page_directory);
+    set_kernel_stack(next->kernelstack);
 
    
 

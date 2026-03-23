@@ -12,12 +12,15 @@ enum {
     SYS_CLOSE = 5,
     SYS_SEEK = 6,
     SYS_LIST = 7,
+    SYS_FORK = 8,
 };
 
-/* Must match your ISR register frame pushed by pusha */
-typedef struct regs {
+typedef struct regss {
     uint32_t gs, fs, es, ds;
+
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+
+    uint32_t eip, cs, eflags, useresp, ss;
 } regs_t;
 
 /* Syscall handler prototype */

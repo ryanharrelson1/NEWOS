@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "../drivers/fs/vfs.h"
+#include "../isr/syscall.h"
 #define PROC_MAX_FDS 32
 #define PAGE_SIZE 4096
 #define USER_STACK_SIZE 0x4000   // 16 KB
@@ -73,6 +74,7 @@ uintptr_t alloc_kernel_stack();
 void free_kernel_stack(uintptr_t stack_top);
  void cpu_load_cr3(uintptr_t phys_addr);
  uint32_t paging_create_process_directory();
+process_t* fork_process(process_t* parent, regs_t* r);
 
 
 

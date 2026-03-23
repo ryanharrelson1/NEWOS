@@ -344,3 +344,169 @@ uintptr_t alloc_kernel_stack(process_t* proc) {
 
     return stack_top;
 }
+
+
+uint32_t page_dir_clone(uint32_t src_pd_phys) {
+  if(!src_pd_phys) return 0;
+
+  uint32_t  child_pd_phys = paging_create_process_directory();
+    if (!child_pd_phys) return 0;
+
+
+    uintptr_t temp_src_pd_virt = temp_map_allocate();
+    if(!temp_src_pd_virt) return 0;
+
+    map_kernel_page(temp_src_pd_virt, src_pd_phys);
+    uint32_t* src_pd = (uint32_t*)temp_src_pd_virt;
+
+    for( uint32_t pdi = 0; pdi < KERNEL_PD_INDEX; pdi++) {
+        if (!(src_pd[pdi] & PAGE_PRESENT)) continue;
+
+        uintptr_t src_pt_phys = src_pd[pdi] & ~0xFFF;
+        uintptr_t temp_src_pt_virt = temp_map_allocate();
+        if(!temp_src_pt_virt) {
+            unmap_page_core(temp_src_pd_virt);
+            temp_map_free(temp_src_pd_virt);
+            return 0;
+        }
+
+        map_kernel_page(temp_src_pt_virt, src_pt_phys);
+        uint32_t* src_pt = (uint32_t*)temp_src_pt_virt;
+
+        for( uint32_t pti = 0; pti < 1024; pti++) {
+
+            if (!(src_pt[pti] & PAGE_PRESENT)) continue;
+
+            uintptr_t virt = (pdi << 22) | (pti << 12);
+            uintptr_t phys = src_pt[pti] & ~0xFFF;
+
+            uintptr_t child_phys = pmm_alloc_frame();
+            if (!child_phys) {
+                unmap_page_core(temp_src_pt_virt);
+                temp_map_free(temp_src_pt_virt);
+                unmap_page_core(temp_src_pd_virt);
+                temp_map_free(temp_src_pd_virt);
+                return 0;
+            }
+
+            map_user_page_pd(child_pd_phys, virt, child_phys);
+
+            uintptr_t src_virt = temp_map_allocate();
+            uintptr_t dst_virt = temp_map_allocate();
+
+            if(!src_virt || !dst_virt) {
+                if(src_virt) {
+                    unmap_page_core(src_virt);
+                    temp_map_free(src_virt);
+                }
+                if(dst_virt) {
+                    unmap_page_core(dst_virt);
+                    temp_map_free(dst_virt);
+                }
+                unmap_page_core(temp_src_pt_virt);
+                temp_map_free(temp_src_pt_virt);
+                unmap_page_core(temp_src_pd_virt);
+                temp_map_free(temp_src_pd_virt);
+                return 0;
+
+            }
+
+            map_kernel_page(src_virt, phys);
+            map_kernel_page(dst_virt, child_phys);
+
+            memcopy((void*)dst_virt, (void*)src_virt, PAGE_SIZE);
+
+            unmap_page_core(src_virt);
+            temp_map_free(src_virt);
+            unmap_page_core(dst_virt);
+            temp_map_free(dst_virt);
+
+
+          
+        }
+
+        unmap_page_core(temp_src_pt_virt);
+        temp_map_free(temp_src_pt_virt);
+       
+
+        
+       
+    }
+
+    unmap_page_core(temp_src_pd_virt);
+    temp_map_free(temp_src_pd_virt);
+
+
+    return child_pd_phys;
+
+}
+
+
+process_t* fork_process(process_t* parent, regs_t* r) {
+
+    if(!parent) return NULL;
+
+    process_t* child = (process_t*)kmalloc(sizeof(process_t));
+    if(!child) return NULL;
+
+    memoryset(child, 0, sizeof(process_t));
+
+    child->pid = next_pid++;
+    child->state = TASK_READY;
+    child->next = NULL;
+
+
+    child->page_directory = page_dir_clone(parent->page_directory);
+    if (!child->page_directory) {
+        kfree(child);
+        return NULL;
+    }
+
+    child->kernelstack = alloc_kernel_stack(child);
+    if (!child->kernelstack) {
+        kfree(child);
+        return NULL;
+    }
+
+    child->entry_point = parent->entry_point;
+    child->user_stack_top = parent->user_stack_top;
+
+    child->context = parent->context;
+    child->context.eax = 0;
+    child->context.ecx = r->ecx;
+    child->context.edx = r->edx;
+    child->context.ebx = r->ebx;
+    child->context.ebp = r->ebp;
+    child->context.esi = r->esi;
+    child->context.edi = r->edi;
+
+    child->context.eip = r->eip;
+    child->context.cs = r->cs;
+    child->context.eflags = r->eflags;
+    child->context.useresp = r->useresp;
+    child->context.ss = r->ss;
+
+        for (int i = 0; i < PROC_MAX_FDS; i++) {
+        child->fds[i] = parent->fds[i];
+    }
+
+    serial_write_string("child eax = ");
+serial_write_hex32(child->context.eax);
+serial_write_string("\n");
+
+serial_write_string("child eip = ");
+serial_write_hex32(child->context.eip);
+serial_write_string("\n");
+
+serial_write_string("child useresp = ");
+serial_write_hex32(child->context.useresp);
+serial_write_string("\n");
+
+    add_process(child);
+
+
+    return child;
+
+
+}
+   
