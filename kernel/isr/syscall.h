@@ -13,6 +13,7 @@ enum {
     SYS_SEEK = 6,
     SYS_LIST = 7,
     SYS_FORK = 8,
+    SYS_EXEC = 9,
 };
 
 typedef struct regss {

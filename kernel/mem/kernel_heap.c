@@ -116,17 +116,6 @@ void kfree(void* ptr) {
         // slab: use cached pointer
         kmem_cache_free(header->cache, header);
     } else if (header->type == 1) {
-        // large: unmap & free pages
-        size_t pages = (header->size + SLAB_SIZE - 1) / SLAB_SIZE;
-        uintptr_t virt = (uintptr_t)header;
-
-        for (size_t i = 0; i < pages; i++) {
-            uintptr_t vpage = virt + i * SLAB_SIZE;
-            uintptr_t phys = virt_to_phys(vpage);
-            if (phys) {
-                unmap_page_core(vpage);
-                pmm_free_frame(phys);
-            }
-        }
+      
     }
 }

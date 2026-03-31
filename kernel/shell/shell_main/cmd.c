@@ -58,6 +58,24 @@ static void cmd_cat(char** args) {
     write(1, "\n", 1);
 }
 
+static void spawn_user_process(const char* path) {
+    volatile  int pid = fork();
+
+   if(pid == 0) {
+        // child
+        exec(path);
+        // if exec returns, it failed
+        puts("Failed to exec testprog\n");
+        exit(1);
+    } else if (pid > 0) {
+        // parent
+        printf("Started testprog with PID %d\n", pid);
+    } else {
+        // fork failed
+        puts("Failed to fork\n");
+    }
+}
+
 // Simple command dispatcher
 void parse_and_execute(char* line) {
     if(!line) return;
@@ -83,7 +101,9 @@ void parse_and_execute(char* line) {
         cmd_ls(args);
     } else if (strcmp(args[0], "cat") == 0) {
         cmd_cat(args);
-    } else {
+    }else if (strcmp(args[0], "spawn") == 0) {
+        spawn_user_process(args[1]);
+    }else {
         printf("Unknown command: %s\n", args[0]);
     }
 }

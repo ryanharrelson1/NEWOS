@@ -22,14 +22,16 @@ timer_irq:
     call scheduler_tick
     add esp,4
 
+    mov al, 0x20
+    out 0x20, al
+
     pop gs
     pop fs
     pop es
     pop ds
     popa
 
-    mov al, 0x20
-    out 0x20, al
+
   
     iret
 

@@ -509,4 +509,52 @@ serial_write_string("\n");
 
 
 }
+
+int proccess_exec_path(process_t* proc, const char* path) {
+    if (!proc || !path) return -1;
+    uint32_t old_pd = proc->page_directory;
+
+    uint32_t new_pd_phys = paging_create_process_directory();
+    if (!new_pd_phys) return -1;
+    
+
+    uint32_t entry_point;
+    if (!elf_load_from_path(path, new_pd_phys, &entry_point)) {
+        return -1;
+    }
+  
+
+    if (user_alloc_and_map(new_pd_phys, 0x800000 - USER_STACK_SIZE, USER_STACK_SIZE) < 0) {
+        return -1;
+    }
+
+    proc->user_stack_top = USER_STACK_VIRT_ADDR_BASE - 4;
+    proc->page_directory = new_pd_phys;
+    proc->entry_point = entry_point;
+
+    proc->context.eax = 0;
+    proc->context.ecx = 0;
+    proc->context.edx = 0;
+    proc->context.ebx = 0;
+    proc->context.ebp = 0;
+    proc->context.esi = 0;
+    proc->context.edi = 0;
+
+    proc->context.eip = entry_point;
+    proc->context.cs = 0x1B;
+    proc->context.eflags = 0x202;
+    proc->context.ss = 0x23;
+    proc->context.useresp = proc->user_stack_top;
+    proc->context.ds = 0x23;
+    proc->context.es = 0x23;
+    proc->context.fs = 0x23;
+    proc->context.gs = 0x23;
+    
+    cpu_load_cr3((uintptr_t)proc->page_directory);
+    set_kernel_stack(proc->kernelstack);
+
+    
+
+    return 0;
+}
    

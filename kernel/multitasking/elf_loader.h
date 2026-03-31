@@ -37,3 +37,4 @@ typedef struct {
 } __attribute__((packed)) Elf32_Phdr;
 
 bool elf_load(void* image, uint32_t proc_pd_phys, uint32_t* entry_out);
+bool elf_load_from_path(const char* path, uint32_t pd, uint32_t* entry);

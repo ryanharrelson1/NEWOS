@@ -77,3 +77,14 @@ int fork(void) {
     return ret;
 }
 
+int exec(const char* path) {
+    int ret;
+    asm volatile(
+        "int $0x80"
+        : "=a"(ret)
+        : "0"(9), "b"(path)
+        : "memory", "cc"
+    );
+    return ret;
+}
+

@@ -45,6 +45,21 @@ static fd_entry_t* fd_get(process_t* p, int fd) {
     return &p->fds[fd];
 }
 
+int copy_user_string(char* dst, const char* user_src, size_t max_len) {
+    if (!dst || !user_src || max_len == 0) return -1;
+
+    for (size_t i = 0; i < max_len - 1; i++) {
+        char c = user_src[i];
+        dst[i] = c;
+        if (c == '\0') {
+            return 0;
+        }
+    }
+
+    dst[max_len - 1] = '\0';
+    return -1;
+}
+
 /* ---------------------------
    Syscall handler table
    --------------------------- */
@@ -241,6 +256,54 @@ serial_write_string("\n");
     return child->pid;
 }
 
+uint32_t sys_exec(regs_t* r) {
+    const char* path = (const char*)r->ebx;
+
+
+
+    char kernel_path[128];
+    if (copy_user_string(kernel_path, path, sizeof(kernel_path)) < 0) {
+        return (uint32_t)-1;
+    }
+
+    serial_write_string("sys_exec path = ");
+serial_write_string(kernel_path);
+serial_write_string("\n");
+
+    if (proccess_exec_path(current_process, kernel_path) < 0) {
+        return (uint32_t)-1;
+    }
+
+    r->eax = 0;
+    r->ecx = 0;
+    r->edx = 0;
+    r->ebx = 0;
+    r->ebp = 0;
+    r->esi = 0;
+    r->edi = 0;
+
+    r->eip = current_process->entry_point;
+    r->cs = 0x1B;
+    r->eflags = 0x202;
+    r->useresp = current_process->user_stack_top;
+    r->ss = 0x23;
+
+    r->ds = 0x23;
+    r->es = 0x23;
+    r->fs = 0x23;
+    r->gs = 0x23;
+
+    serial_write_string("sys_exec new eip = ");
+serial_write_hex32(r->eip);
+serial_write_string("\n");
+
+serial_write_string("sys_exec new useresp = ");
+serial_write_hex32(r->useresp);
+serial_write_string("\n");
+
+    return 0;
+}
+
 
 
 
@@ -257,4 +320,5 @@ void syscall_init(void) {
     syscall_register(SYS_SEEK,  sys_seek);
     syscall_register(SYS_LIST,  sys_list);
     syscall_register(SYS_FORK,  sys_fork);
+    syscall_register(SYS_EXEC,  sys_exec);
 }

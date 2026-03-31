@@ -9,5 +9,7 @@ int open(const char* path, int flags);
 int close(int fd);
 int seek(int fd, int pos);
 int list(const char* path);
+int fork(void);
+int exec(const char* path);
 
 #endif

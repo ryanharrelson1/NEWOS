@@ -75,6 +75,7 @@ void free_kernel_stack(uintptr_t stack_top);
  void cpu_load_cr3(uintptr_t phys_addr);
  uint32_t paging_create_process_directory();
 process_t* fork_process(process_t* parent, regs_t* r);
+int proccess_exec_path(process_t* proc, const char* path);
 
 
 
